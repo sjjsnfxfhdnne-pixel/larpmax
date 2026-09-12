@@ -72,19 +72,26 @@ const LINKS = {
   }
 };
 
+const envAdmins = String(process.env.TELEGRAM_ADMIN_IDS || '')
+  .split(',')
+  .map((part) => part.trim())
+  .filter(Boolean);
+
+const ownerId =
+  String(process.env.TELEGRAM_OWNER_ID || '').trim() || envAdmins[0] || '';
+
 module.exports = {
   token: process.env.TELEGRAM_BOT_TOKEN || '',
   botUsername: process.env.TELEGRAM_BOT_USERNAME || 'larpmaxbot',
   supportUsername: process.env.TELEGRAM_SUPPORT_USERNAME || 'zprep',
   authSiteUrl: process.env.AUTH_SITE_URL || 'http://127.0.0.1:3780',
+  maxApiUrl: process.env.MAX_API_URL || '',
+  adminApiSecret: process.env.ADMIN_API_SECRET || '',
+  ownerId,
   links: LINKS,
   subscriptionEnabled: process.env.TELEGRAM_SUBSCRIPTION_ENABLED === '1',
   adminOnly: process.env.TELEGRAM_ADMIN_ONLY === '1',
-  admins: new Set(
-    String(process.env.TELEGRAM_ADMIN_IDS || '')
-      .split(',')
-      .map((part) => part.trim())
-      .filter(Boolean)
-  ),
+  envAdmins,
+  admins: new Set(envAdmins),
   requiredChats: parseRequiredChats()
 };

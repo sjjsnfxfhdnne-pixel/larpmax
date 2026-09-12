@@ -4,6 +4,7 @@ const botConfig = require('../bot/config');
 const { cleanupOrphanAuthSessions } = require('./bridge');
 const { AuthService } = require('./auth-service');
 const { jsonSafe } = require('./serialize');
+const { mountInternalApi, mountPublicAuthExtras } = require('./internal-api');
 
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT) || 3780;
@@ -35,8 +36,8 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, X-Admin-Secret');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') return res.status(204).end();
   next();
@@ -47,10 +48,23 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.get('/api/auth/config', (_req, res) => {
-  sendJson(res, 200, { botUsername: botConfig.botUsername || 'larpmaxbot' });
+  const publicApi =
+    String(process.env.PUBLIC_API_URL || process.env.MAX_API_URL || '').replace(/\/$/, '') ||
+    `http://${HOST === '0.0.0.0' ? '127.0.0.1' : HOST}:${PORT}`;
+  sendJson(res, 200, {
+    botUsername: botConfig.botUsername || 'larpmaxbot',
+    apiBase: publicApi
+  });
 });
 
-app.post('/api/auth/start', (_req, res) => wrap(res, () => ({ authId: authService.createFlow() })));
+mountPublicAuthExtras(app, { sendJson, wrap });
+mountInternalApi(app, { sendJson, wrap });
+
+app.post('/api/auth/start', (req, res) =>
+  wrap(res, () => ({
+    authId: authService.createFlow({ ref: (req.body && req.body.ref) || req.query.ref || '' })
+  }))
+);
 
 app.get('/api/auth/:id/state', (req, res) =>
   wrap(res, () => authService.getFlow(req.params.id).snapshot())

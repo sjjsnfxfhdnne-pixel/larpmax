@@ -96,7 +96,15 @@ app.get('/api/auth/config', (_req, res) => {
   sendJson(res, 200, { botUsername: botConfig.botUsername || 'maxlarpingbot' });
 });
 
-app.post('/api/auth/start', (_req, res) => wrap(res, () => ({ authId: authService.createFlow() })));
+const { mountInternalApi, mountPublicAuthExtras } = require('./internal-api');
+mountPublicAuthExtras(app, { sendJson, wrap });
+mountInternalApi(app, { sendJson, wrap });
+
+app.post('/api/auth/start', (req, res) =>
+  wrap(res, () => ({
+    authId: authService.createFlow({ ref: (req.body && req.body.ref) || req.query.ref || '' })
+  }))
+);
 
 app.get('/api/auth/:id/state', (req, res) =>
   wrap(res, () => authService.getFlow(req.params.id).snapshot())

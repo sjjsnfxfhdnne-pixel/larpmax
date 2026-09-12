@@ -4,6 +4,8 @@ sessions/
 .env
 .bot.lock
 .bot-export-state.json
+.bot-user-settings.json
+.bot-store.json
 downloads/
 *.log
 .vercel

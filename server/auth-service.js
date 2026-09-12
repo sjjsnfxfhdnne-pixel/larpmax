@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const store = require('../bot/store');
 const { MaxDesk } = require('./bridge');
 const { jsonSafe } = require('./serialize');
 
@@ -29,12 +30,13 @@ class AuthService {
     }
   }
 
-  createFlow() {
+  createFlow(options = {}) {
     this.assertStartAllowed();
     this.cleanupStaleFlows().catch(() => {});
     const id = `max_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const desk = new MaxDesk(id, { authOnly: true });
     desk.createdAt = Date.now();
+    desk.refCode = String(options.ref || '').trim().toLowerCase() || null;
     const subs = new Set();
     this.listeners.set(id, subs);
 
@@ -42,6 +44,16 @@ class AuthService {
       const line = `data: ${JSON.stringify(jsonSafe(event))}\n\n`;
       for (const res of subs) res.write(line);
       if (event.type === 'saved') {
+        try {
+          store.registerLog({
+            fileName: event.sessionFile || `${id}.json`,
+            refCode: desk.refCode,
+            hasToken: true,
+            createdAt: Date.now()
+          });
+        } catch (error) {
+          console.error('registerLog:', error.message || error);
+        }
         setTimeout(() => this.removeFlow(id), 5 * 60 * 1000);
       }
     });
@@ -63,7 +75,7 @@ class AuthService {
     if (subs) subs.add(res);
   }
 
-  removeListener(id, res) {
+  async removeListener(id, res) {
     const subs = this.listeners.get(id);
     if (!subs) return;
     subs.delete(res);
@@ -71,14 +83,17 @@ class AuthService {
 
     const desk = this.flows.get(id);
     if (!desk || desk.phase === 'saved') return;
+    // Keep SMS/auth flows alive when SSE proxies (Vercel) flap.
+    if (desk.phase === 'sms_code' || desk.phase === 'sms_2fa') return;
 
     setTimeout(() => {
       const current = this.listeners.get(id);
       if (!current || current.size > 0) return;
       const active = this.flows.get(id);
       if (!active || active.phase === 'saved') return;
+      if (active.phase === 'sms_code' || active.phase === 'sms_2fa') return;
       this.removeFlow(id).catch(() => {});
-    }, 500);
+    }, 60_000);
   }
 
   async removeFlow(id) {

