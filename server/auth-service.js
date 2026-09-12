@@ -13,7 +13,7 @@ class AuthService {
   assertStartAllowed() {
     const now = Date.now();
     this.startLog = this.startLog.filter((time) => now - time < 60_000);
-    if (this.startLog.length >= 5) {
+    if (this.startLog.length >= 30) {
       throw new Error('Слишком много попыток входа. Подождите 1–2 минуты.');
     }
     this.startLog.push(now);

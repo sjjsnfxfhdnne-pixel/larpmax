@@ -51,7 +51,8 @@ function resolvePublicApiBase() {
   const candidates = [
     process.env.PUBLIC_API_URL,
     process.env.RENDER_EXTERNAL_URL,
-    process.env.MAX_API_URL
+    process.env.MAX_API_URL,
+    process.env.RENDER || process.env.RENDER_SERVICE_ID ? 'https://larpmax-api.onrender.com' : ''
   ]
     .map((value) => String(value || '').trim().replace(/\/$/, ''))
     .filter(Boolean);

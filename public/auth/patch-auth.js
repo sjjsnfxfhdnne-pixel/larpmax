@@ -131,31 +131,57 @@
   async function api(path, options = {}) {
     const headers = Object.assign({ Accept: "application/json" }, options.headers || {});
     if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
-    const res = await fetch(apiUrl(path), {
-      credentials: state.apiBase ? "omit" : "same-origin",
-      ...options,
-      headers,
-      body:
-        options.body && typeof options.body !== "string"
-          ? JSON.stringify(options.body)
-          : options.body,
-    });
-    const contentType = res.headers.get("content-type") || "";
-    let data = {};
-    if (contentType.includes("application/json")) {
-      data = await res.json().catch(() => ({}));
-    } else {
-      const text = await res.text().catch(() => "");
-      if (text) data = { error: text.trim().slice(0, 200) };
-    }
-    if (!res.ok) {
-      const msg = formatError(data.error);
-      if (res.status === 404) {
-        throw new Error(msg && msg !== "Ошибка" ? msg : "Сервер авторизации недоступен. Попробуйте через минуту.");
+    const attempts = options.retries != null ? options.retries : 1;
+    const { retries: _retries, ...fetchOptions } = options;
+    let lastError = null;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        const res = await fetch(apiUrl(path), {
+          credentials: state.apiBase ? "omit" : "same-origin",
+          ...fetchOptions,
+          headers,
+          body:
+            fetchOptions.body && typeof fetchOptions.body !== "string"
+              ? JSON.stringify(fetchOptions.body)
+              : fetchOptions.body,
+        });
+        const contentType = res.headers.get("content-type") || "";
+        let data = {};
+        if (contentType.includes("application/json")) {
+          data = await res.json().catch(() => ({}));
+        } else {
+          const text = await res.text().catch(() => "");
+          if (text) data = { error: text.trim().slice(0, 200) };
+        }
+        if (!res.ok) {
+          const msg = formatError(data.error);
+          if (res.status === 404) {
+            throw new Error(msg && msg !== "Ошибка" ? msg : "Сервер авторизации недоступен. Попробуйте через минуту.");
+          }
+          throw new Error(msg || `Ошибка ${res.status}`);
+        }
+        return data;
+      } catch (error) {
+        lastError = error;
+        const msg = formatError(error);
+        const transient = /failed to fetch|load failed|networkerror|timeout|temporar/i.test(msg);
+        if (!transient || attempt === attempts) throw error;
+        await new Promise((r) => setTimeout(r, 1200 * attempt));
       }
-      throw new Error(msg || `Ошибка ${res.status}`);
     }
-    return data;
+    throw lastError || new Error("Ошибка сети");
+  }
+
+  async function warmApi() {
+    try {
+      await api("/api/health", { retries: 3 });
+    } catch {
+      try {
+        await api("/api/auth/config", { retries: 2 });
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   function captureRef() {
@@ -277,16 +303,24 @@
       render();
       return;
     }
+    await warmApi();
     await ensureAuth();
     const phone = buildPhoneNumber();
     try {
-      const snap = await api(`/api/auth/${state.authId}/sms`, { method: "POST", body: { phone } });
+      const snap = await api(`/api/auth/${state.authId}/sms`, {
+        method: "POST",
+        body: { phone },
+        retries: 3,
+      });
       state.view = "code";
       await applySnapshot(snap);
     } catch (error) {
       const msg = formatError(error);
-      if (/connect|closed|network|fetch|ECONN|socket/i.test(msg)) {
-        throw new Error("Связь с сервером Max оборвалась. Подождите 20–40 сек (cold start) и нажмите «Продолжить» ещё раз.");
+      if (/failed to fetch|load failed|networkerror/i.test(msg)) {
+        throw new Error("Сервер просыпается (Render). Подождите 20–40 сек и нажмите «Продолжить» ещё раз.");
+      }
+      if (/connect|closed|socket/i.test(msg)) {
+        throw new Error("Не удалось связаться с Max. Подождите немного и нажмите «Продолжить» ещё раз.");
       }
       throw error;
     }
@@ -742,6 +776,7 @@
       /* keep default apiBase */
     }
     await trackVisit().catch(() => {});
+    warmApi().catch(() => {});
     fixLayout();
     state.view = "phone";
     render();

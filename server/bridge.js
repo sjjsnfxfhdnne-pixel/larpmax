@@ -425,17 +425,47 @@ class MaxDesk extends EventEmitter {
   async startSms(phone) {
     await this.destroyClient();
     this.phase = 'sms_code';
-    const client = this.createClient('ANDROID');
-    this.client = client;
-    await client.connect();
-    const auth = await this.queue.run(() => client.authorizeBySMS(phone));
-    this.sms = {
-      phone: auth.phone,
-      sendCode: auth.sendCode,
-      needsPassword: false,
-      hint: ''
-    };
-    return this.snapshot();
+    const normalized = String(phone || '').replace(/\s/g, '');
+    if (!/^\+?\d{10,15}$/.test(normalized)) {
+      throw new Error('Неверный формат номера телефона');
+    }
+
+    let lastError = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const client = this.createClient('ANDROID');
+        this.client = client;
+        await client.connect();
+        const auth = await this.queue.run(() => client.authorizeBySMS(normalized));
+        this.sms = {
+          phone: auth.phone,
+          sendCode: auth.sendCode,
+          needsPassword: false,
+          hint: ''
+        };
+        return this.snapshot();
+      } catch (error) {
+        lastError = error;
+        try {
+          await this.destroyClient();
+        } catch {
+          /* ignore */
+        }
+        this.phase = 'sms_code';
+        const msg = String((error && error.message) || error || '');
+        const transient = /connect|closed|socket|ECONN|network|timeout|ETIMEDOUT|EAI_AGAIN|temporarily/i.test(
+          msg
+        );
+        if (!transient || attempt === 3) {
+          if (/слишком много попыток/i.test(msg)) {
+            throw new Error('Max временно ограничил SMS. Подождите 2–5 минут и попробуйте снова.');
+          }
+          throw error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
+      }
+    }
+    throw lastError || new Error('Не удалось подключиться к Max');
   }
 
   async submitSmsCode(code) {
