@@ -1,0 +1,10 @@
+node_modules/
+sessions/
+.panel-secret
+.env
+.bot.lock
+.bot-export-state.json
+downloads/
+*.log
+.vercel
+.tools/

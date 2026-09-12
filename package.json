@@ -1,0 +1,25 @@
+{
+  "name": "pult",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-hosted Max account desk (webmaxsocket)",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "bot": "node bot/index.js",
+    "bot:stop": "node bot/stop.js",
+    "auth-api": "node server/auth-only.js",
+    "assets:auth": "node scripts/download-auth-assets.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^2.0.2",
+    "qr-code-styling": "^1.9.2",
+    "qrcode": "^1.5.4",
+    "webmaxsocket": "^1.2.7"
+  }
+}

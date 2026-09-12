@@ -1,0 +1,11 @@
+const fs = require('fs');
+const h = fs.readFileSync('c:/Users/itzik/max/web.max.ru-rendered.html', 'utf8');
+const start = h.indexOf('<div class="qr svelte-vywflk">');
+const end = h.indexOf('</div> <div class="info svelte-vywflk">', start);
+const qr = h.slice(start, end);
+const uses = [...qr.matchAll(/<use[^>]+>/g)].map((m) => m[0]);
+console.log('total uses', uses.length);
+console.log('sample 1', uses[0]);
+console.log('sample 2', uses[1]);
+console.log('sample 3', uses[50]);
+console.log('sample last', uses[uses.length - 1]);

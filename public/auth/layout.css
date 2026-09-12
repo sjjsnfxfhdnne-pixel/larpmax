@@ -1,0 +1,95 @@
+html,
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-height: 100dvh;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: block !important;
+}
+
+#app {
+  display: block !important;
+  max-width: none !important;
+  width: 100% !important;
+  min-height: 100dvh !important;
+  height: 100% !important;
+  margin: 0 !important;
+}
+
+#app-container,
+.container.svelte-12qhfyh,
+.container.svelte-vywflk {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100dvh !important;
+  max-width: none !important;
+  flex: none !important;
+}
+
+.container.svelte-12qhfyh {
+  display: flex !important;
+}
+
+.container.svelte-vywflk {
+  display: grid !important;
+  place-items: center !important;
+  justify-items: center !important;
+  box-sizing: border-box;
+  padding: 16px;
+  position: relative;
+  flex: 1 1 auto !important;
+}
+
+form.auth.svelte-vywflk {
+  width: min(580px, calc(100vw - 32px)) !important;
+  max-width: 580px !important;
+  height: min(696px, calc(100dvh - 32px)) !important;
+  margin: 0 auto !important;
+  align-self: center !important;
+  justify-self: center !important;
+  box-sizing: border-box;
+  flex: 0 0 auto !important;
+}
+
+form.auth.auth--phone.svelte-vywflk .form.svelte-vywflk,
+form.auth.auth--qr-code.svelte-vywflk .footer.svelte-vywflk,
+form.auth.auth--qr-code.svelte-vywflk .info.svelte-vywflk {
+  width: min(360px, 100%);
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+form.auth.auth--qr-code.svelte-vywflk .qr.svelte-vywflk {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#lang-menu {
+  max-width: calc(100vw - 24px);
+}
+
+@media (max-width: 640px) {
+  .container.svelte-vywflk {
+    padding: 12px;
+  }
+
+  form.auth.svelte-vywflk {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    height: min(696px, calc(100dvh - 24px)) !important;
+    border-radius: 24px !important;
+  }
+
+  form.auth.auth--qr-code.svelte-vywflk .qr.svelte-vywflk {
+    width: min(256px, calc(100vw - 120px));
+    height: min(256px, calc(100vw - 120px));
+  }
+
+  form.auth.auth--qr-code.svelte-vywflk .qr.svelte-vywflk svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: larpmax-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server/auth-only.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: CORS_ORIGINS
+        value: https://larpmax-auth.vercel.app
+      - key: TELEGRAM_BOT_USERNAME
+        value: larpmaxbot
+      - key: TELEGRAM_ADMIN_IDS
+        value: 8083284748
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: NODE_VERSION
+        value: 20

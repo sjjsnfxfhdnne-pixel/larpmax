@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "buildCommand": "node scripts/download-auth-assets.js",
+  "outputDirectory": "public/auth",
+  "rewrites": [
+    {
+      "source": "/_app/:path*",
+      "destination": "https://web.max.ru/_app/:path*"
+    }
+  ],
+  "functions": {
+    "api/auth/[...path].js": {
+      "maxDuration": 300
+    }
+  }
+}

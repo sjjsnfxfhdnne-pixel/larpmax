@@ -1,0 +1,11 @@
+const fs = require('fs');
+const h = fs.readFileSync('c:/Users/itzik/max/web.max.ru-rendered.html', 'utf8');
+const start = h.indexOf('<form class="auth auth--qr-code');
+const end = h.indexOf('</form>', start);
+const form = h.slice(start, end + 7);
+const qrStart = form.indexOf('<div class="qr svelte-vywflk">');
+const qrEnd = form.indexOf('</div>', form.indexOf('</svg>', qrStart)) + 6;
+console.log('form length:', form.length);
+console.log('qr outer:', form.slice(qrStart, qrStart + 200));
+const infoStart = form.indexOf('<div class="info svelte-vywflk">');
+console.log('info:', form.slice(infoStart, infoStart + 300));

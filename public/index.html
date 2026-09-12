@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pult — пульт Max</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Onest:wght@400;560;700&family=Unbounded:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <section id="view-gate" class="stage">
+        <div class="mast">
+          <p class="wordmark">Pult</p>
+          <h1>Пульт остаётся на этом компьютере.</h1>
+          <p class="lead">
+            Это не облако Max. Пароль открывает только локальную панель. Сессия аккаунта потом ляжет в папку
+            <code>sessions</code>.
+          </p>
+        </div>
+        <form id="gate-form" class="sheet">
+          <label for="gate-password">Пароль пульта</label>
+          <input id="gate-password" name="password" type="password" autocomplete="current-password" required />
+          <p class="hint">Если запускаете впервые — смотрите консоль сервера или файл <code>.panel-secret</code>.</p>
+          <button type="submit">Открыть</button>
+          <p id="gate-error" class="error" hidden></p>
+        </form>
+      </section>
+
+      <section id="view-login" class="stage" hidden>
+        <div class="mast">
+          <p class="wordmark">Pult</p>
+          <h1>Войдите в свой Max.</h1>
+          <p class="lead">
+            В приложении откройте профиль, затем устройства, и наведите камеру на квадрат. Либо войдите по номеру —
+            как в телефоне.
+          </p>
+          <button id="resume-btn" class="ghost" type="button" hidden>Продолжить сохранённую сессию</button>
+        </div>
+        <div class="login-grid">
+          <div class="qr-panel">
+            <div id="qr-frame" class="qr-frame">
+              <p id="qr-placeholder">QR появится здесь</p>
+              <img id="qr-image" alt="QR для входа в Max" hidden />
+            </div>
+            <p id="qr-meta" class="hint"></p>
+            <button id="qr-btn" type="button">Показать QR</button>
+          </div>
+          <form id="sms-form" class="sheet">
+            <label for="sms-phone">Номер телефона</label>
+            <input id="sms-phone" name="phone" type="tel" inputmode="tel" placeholder="+79001234567" />
+            <label for="sms-code">Код из SMS</label>
+            <input id="sms-code" name="code" inputmode="numeric" autocomplete="one-time-code" />
+            <label for="sms-2fa">Пароль 2FA, если Max его спросит</label>
+            <input id="sms-2fa" name="twofa" type="password" autocomplete="off" />
+            <p id="sms-hint" class="hint"></p>
+            <div class="row">
+              <button id="sms-request" type="button">Прислать код</button>
+              <button id="sms-submit" class="ghost" type="button">Войти</button>
+            </div>
+          </form>
+        </div>
+        <p id="login-error" class="error" hidden></p>
+      </section>
+
+      <section id="view-desk" hidden>
+        <aside class="rail">
+          <header class="rail-head">
+            <p class="wordmark small">Pult</p>
+            <p id="me-name" class="me-name"></p>
+            <p id="me-phone" class="me-phone"></p>
+          </header>
+          <label class="search-wrap">
+            <input id="chat-search" type="search" placeholder="Найти чат" />
+          </label>
+          <nav id="chat-list" class="chat-list"></nav>
+        </aside>
+        <main class="thread">
+          <header class="thread-head">
+            <div>
+              <h2 id="thread-title">Выберите чат</h2>
+              <p id="thread-sub" class="hint">Сообщения и файлы идут от вашего аккаунта</p>
+            </div>
+            <div class="row">
+              <button id="devices-btn" class="ghost" type="button">Устройства</button>
+              <button id="profile-btn" class="ghost" type="button">Профиль</button>
+            </div>
+          </header>
+          <div id="messages" class="messages"></div>
+          <form id="composer" class="composer">
+            <input id="photo-input" type="file" accept="image/*" hidden />
+            <button id="photo-btn" class="ghost" type="button">Фото</button>
+            <textarea id="composer-text" rows="1" placeholder="Написать в этот чат"></textarea>
+            <button type="submit">Отправить</button>
+          </form>
+        </main>
+      </section>
+    </div>
+
+    <div id="drawer" class="drawer" hidden>
+      <div class="drawer-card">
+        <header>
+          <h3 id="drawer-title"></h3>
+          <button id="drawer-close" class="ghost" type="button">Закрыть</button>
+        </header>
+        <div id="drawer-body"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

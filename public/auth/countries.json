@@ -1,0 +1,901 @@
+[
+  {
+    "alpha2Code": "RU",
+    "code": "+7",
+    "mask": "000 000 00 00",
+    "operatorCodeStarters": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "8",
+      "9"
+    ]
+  },
+  {
+    "alpha2Code": "BY",
+    "code": "+375",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "AZ",
+    "code": "+994",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "AM",
+    "code": "+374",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "GE",
+    "code": "+995",
+    "mask": "000 00 00 00"
+  },
+  {
+    "alpha2Code": "KZ",
+    "code": "+7",
+    "mask": "000 000 00 00",
+    "operatorCodeStarters": [
+      "6",
+      "7"
+    ]
+  },
+  {
+    "alpha2Code": "KG",
+    "code": "+996",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "MD",
+    "code": "+373",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "TJ",
+    "code": "+992",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "UZ",
+    "code": "+998",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "AE",
+    "code": "+971",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "AF",
+    "code": "+93",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "BO",
+    "code": "+591",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "CD",
+    "code": "+243",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "CG",
+    "code": "+242",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "CO",
+    "code": "+57",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "CU",
+    "code": "+53",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "EG",
+    "code": "+20",
+    "mask": "00 0000 0000"
+  },
+  {
+    "alpha2Code": "GD",
+    "code": "+1473",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "ID",
+    "code": "+62",
+    "mask": "000 0000 0000"
+  },
+  {
+    "alpha2Code": "IN",
+    "code": "+91",
+    "mask": "00000 00000"
+  },
+  {
+    "alpha2Code": "IQ",
+    "code": "+964",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "KH",
+    "code": "+855",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "KN",
+    "code": "+1869",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "KW",
+    "code": "+965",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "LA",
+    "code": "+856",
+    "mask": "00 00 000 000"
+  },
+  {
+    "alpha2Code": "LB",
+    "code": "+961",
+    "mask": "0 000 000"
+  },
+  {
+    "alpha2Code": "MM",
+    "code": "+95",
+    "mask": "0 000 000 000"
+  },
+  {
+    "alpha2Code": "MY",
+    "code": "+60",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "NI",
+    "code": "+505",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "PK",
+    "code": "+92",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "PW",
+    "code": "+680",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "QA",
+    "code": "+974",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "RS",
+    "code": "+381",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "SA",
+    "code": "+966",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "TH",
+    "code": "+66",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "TM",
+    "code": "+993",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "TR",
+    "code": "+90",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "TZ",
+    "code": "+255",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "VE",
+    "code": "+58",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "VN",
+    "code": "+84",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "AG",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "AI",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "AL",
+    "code": "+355",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "AO",
+    "code": "+244",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "AR",
+    "code": "+54",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "AT",
+    "code": "+43",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "AU",
+    "code": "+61",
+    "mask": "0 0000 0000"
+  },
+  {
+    "alpha2Code": "BA",
+    "code": "+387",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "BB",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "BD",
+    "code": "+880",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "BE",
+    "code": "+32",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "BF",
+    "code": "+226",
+    "mask": "00 00 00 00"
+  },
+  {
+    "alpha2Code": "BG",
+    "code": "+359",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "BH",
+    "code": "+973",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "BJ",
+    "code": "+229",
+    "mask": "0 00 00 00"
+  },
+  {
+    "alpha2Code": "BM",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "BN",
+    "code": "+673",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "BR",
+    "code": "+55",
+    "mask": "00 00000 0000"
+  },
+  {
+    "alpha2Code": "BS",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "BT",
+    "code": "+975",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "BW",
+    "code": "+267",
+    "mask": "0 000 000"
+  },
+  {
+    "alpha2Code": "BZ",
+    "code": "+501",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "CA",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "CH",
+    "code": "+41",
+    "mask": "00 000 00 00"
+  },
+  {
+    "alpha2Code": "CI",
+    "code": "+225",
+    "mask": "0 00 00 00 00"
+  },
+  {
+    "alpha2Code": "CL",
+    "code": "+56",
+    "mask": "0 0000 0000"
+  },
+  {
+    "alpha2Code": "CM",
+    "code": "+237",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "CN",
+    "code": "+86",
+    "mask": "000 0000 0000"
+  },
+  {
+    "alpha2Code": "CR",
+    "code": "+506",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "CV",
+    "code": "+238",
+    "mask": "000 00 00"
+  },
+  {
+    "alpha2Code": "CY",
+    "code": "+357",
+    "mask": "0 000 000"
+  },
+  {
+    "alpha2Code": "CZ",
+    "code": "+420",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "DE",
+    "code": "+49",
+    "mask": "000 00000000"
+  },
+  {
+    "alpha2Code": "DK",
+    "code": "+45",
+    "mask": "00 00 00 00"
+  },
+  {
+    "alpha2Code": "DM",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "DO",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "DZ",
+    "code": "+213",
+    "mask": "000 00 00 00"
+  },
+  {
+    "alpha2Code": "EC",
+    "code": "+593",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "EE",
+    "code": "+372",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "ES",
+    "code": "+34",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "FI",
+    "code": "+358",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "FJ",
+    "code": "+679",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "FM",
+    "code": "+691",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "FR",
+    "code": "+33",
+    "mask": "0 00 00 00 00"
+  },
+  {
+    "alpha2Code": "GA",
+    "code": "+241",
+    "mask": "0 00 00 00"
+  },
+  {
+    "alpha2Code": "GB",
+    "code": "+44",
+    "mask": "0000 000000"
+  },
+  {
+    "alpha2Code": "GH",
+    "code": "+233",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "GM",
+    "code": "+220",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "GR",
+    "code": "+30",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "GT",
+    "code": "+502",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "GW",
+    "code": "+245",
+    "mask": "0000000"
+  },
+  {
+    "alpha2Code": "GY",
+    "code": "+592",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "HK",
+    "code": "+852",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "HN",
+    "code": "+504",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "HR",
+    "code": "+385",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "HU",
+    "code": "+36",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "IE",
+    "code": "+353",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "IL",
+    "code": "+972",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "IS",
+    "code": "+354",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "IT",
+    "code": "+39",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "JM",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "JO",
+    "code": "+962",
+    "mask": "0 0000 000"
+  },
+  {
+    "alpha2Code": "JP",
+    "code": "+81",
+    "mask": "00 0000 0000"
+  },
+  {
+    "alpha2Code": "KE",
+    "code": "+254",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "KR",
+    "code": "+82",
+    "mask": "00 0000 0000"
+  },
+  {
+    "alpha2Code": "KY",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "LC",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "LK",
+    "code": "+94",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "LR",
+    "code": "+231",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "LT",
+    "code": "+370",
+    "mask": "000 00000"
+  },
+  {
+    "alpha2Code": "LU",
+    "code": "+352",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "LV",
+    "code": "+371",
+    "mask": "00000000"
+  },
+  {
+    "alpha2Code": "LY",
+    "code": "+218",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "MA",
+    "code": "+212",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "ME",
+    "code": "+382",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "MG",
+    "code": "+261",
+    "mask": "0 00 000 00"
+  },
+  {
+    "alpha2Code": "MK",
+    "code": "+389",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "ML",
+    "code": "+223",
+    "mask": "00 00 00 00"
+  },
+  {
+    "alpha2Code": "MN",
+    "code": "+976",
+    "mask": "00 00 0000"
+  },
+  {
+    "alpha2Code": "MO",
+    "code": "+853",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "MR",
+    "code": "+222",
+    "mask": "00 00 00 00"
+  },
+  {
+    "alpha2Code": "MS",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "MT",
+    "code": "+356",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "MU",
+    "code": "+230",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "MV",
+    "code": "+960",
+    "mask": "0000 000"
+  },
+  {
+    "alpha2Code": "MW",
+    "code": "+265",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "MX",
+    "code": "+52",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "MZ",
+    "code": "+258",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "NA",
+    "code": "+264",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "NE",
+    "code": "+227",
+    "mask": "00 00 00 00"
+  },
+  {
+    "alpha2Code": "NG",
+    "code": "+234",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "NL",
+    "code": "+31",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "NO",
+    "code": "+47",
+    "mask": "000 00 000"
+  },
+  {
+    "alpha2Code": "NP",
+    "code": "+977",
+    "mask": "0 000 00000"
+  },
+  {
+    "alpha2Code": "NR",
+    "code": "+674",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "NZ",
+    "code": "+64",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "OM",
+    "code": "+968",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "PA",
+    "code": "+507",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "PE",
+    "code": "+51",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "PG",
+    "code": "+675",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "PH",
+    "code": "+63",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "PL",
+    "code": "+48",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "PT",
+    "code": "+351",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "PY",
+    "code": "+595",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "RO",
+    "code": "+40",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "RW",
+    "code": "+250",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "SB",
+    "code": "+677",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "SC",
+    "code": "+248",
+    "mask": "0 00 00"
+  },
+  {
+    "alpha2Code": "SE",
+    "code": "+46",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "SG",
+    "code": "+65",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "SI",
+    "code": "+386",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "SK",
+    "code": "+421",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "SL",
+    "code": "+232",
+    "mask": "00 000000"
+  },
+  {
+    "alpha2Code": "SN",
+    "code": "+221",
+    "mask": "0 000 00 00"
+  },
+  {
+    "alpha2Code": "SR",
+    "code": "+597",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "ST",
+    "code": "+239",
+    "mask": "000 0000"
+  },
+  {
+    "alpha2Code": "SV",
+    "code": "+503",
+    "mask": "0000 0000"
+  },
+  {
+    "alpha2Code": "SZ",
+    "code": "+268",
+    "mask": "0 00 0000"
+  },
+  {
+    "alpha2Code": "TC",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "TD",
+    "code": "+235",
+    "mask": "00 00 00 00"
+  },
+  {
+    "alpha2Code": "TN",
+    "code": "+216",
+    "mask": "00 000 000"
+  },
+  {
+    "alpha2Code": "TO",
+    "code": "+676",
+    "mask": "00000"
+  },
+  {
+    "alpha2Code": "TT",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "TW",
+    "code": "+886",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "UA",
+    "code": "+380",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "UG",
+    "code": "+256",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "US",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "UY",
+    "code": "+598",
+    "mask": "0 000 000"
+  },
+  {
+    "alpha2Code": "VC",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "VG",
+    "code": "+1",
+    "mask": "000 000 0000"
+  },
+  {
+    "alpha2Code": "VU",
+    "code": "+678",
+    "mask": "0000000"
+  },
+  {
+    "alpha2Code": "XK",
+    "code": "+383",
+    "mask": "0 000 000"
+  },
+  {
+    "alpha2Code": "YE",
+    "code": "+967",
+    "mask": "000 000 000"
+  },
+  {
+    "alpha2Code": "ZA",
+    "code": "+27",
+    "mask": "00 000 0000"
+  },
+  {
+    "alpha2Code": "ZM",
+    "code": "+260",
+    "mask": "0 000 0000"
+  },
+  {
+    "alpha2Code": "ZW",
+    "code": "+263",
+    "mask": "0 000 0000"
+  }
+]
