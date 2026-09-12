@@ -5,9 +5,12 @@ function useRemote() {
   return Boolean(config.maxApiUrl && config.adminApiSecret);
 }
 
+function apiBase() {
+  return String(config.maxApiUrl || '').replace(/\/$/, '');
+}
+
 async function request(method, path, body) {
-  const base = String(config.maxApiUrl || '').replace(/\/$/, '');
-  const url = `${base}${path}`;
+  const url = `${apiBase()}${path}`;
   const init = {
     method,
     headers: {
@@ -27,19 +30,47 @@ async function request(method, path, body) {
   return data;
 }
 
+async function fetchRemoteVisitCount(refCode, period = 'all') {
+  const ref = String(refCode || '').trim().toLowerCase();
+  if (!ref || !apiBase()) return 0;
+  try {
+    const url = `${apiBase()}/api/auth/visits?ref=${encodeURIComponent(ref)}&period=${encodeURIComponent(period)}`;
+    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return 0;
+    return Number(data.visits) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 async function syncUser(user) {
+  if (!user || !user.id) return user;
+  const payload = {
+    id: user.id,
+    refCode: user.refCode,
+    username: user.username,
+    firstName: user.firstName,
+    lastSeenAt: user.lastSeenAt || Date.now()
+  };
   if (!useRemote()) return user;
   try {
-    return await request('POST', '/api/internal/users', {
-      id: user.id,
-      refCode: user.refCode,
-      username: user.username,
-      firstName: user.firstName,
-      lastSeenAt: user.lastSeenAt
-    });
+    return await request('POST', '/api/internal/users', payload);
   } catch (error) {
-    console.warn('syncUser:', error.message);
-    return user;
+    try {
+      await request('POST', '/api/auth/ref-sync', payload);
+      return user;
+    } catch {
+      console.warn('syncUser:', error.message);
+      return user;
+    }
+  }
+}
+
+async function syncAllUsers() {
+  if (!useRemote()) return;
+  for (const user of store.listUsers()) {
+    await syncUser({ id: user.id, ...user });
   }
 }
 
@@ -64,18 +95,34 @@ async function setCommissionEvery(every) {
 }
 
 async function buildStats(period = 'all') {
-  if (!useRemote()) return store.buildStats(period);
+  const local = store.buildStats(period);
+  if (!useRemote()) return local;
   try {
-    return await request('GET', `/api/internal/stats?period=${encodeURIComponent(period)}`);
+    const remote = await request('GET', `/api/internal/stats?period=${encodeURIComponent(period)}`);
+    return {
+      ...local,
+      ...remote,
+      visits: Math.max(Number(remote.visits) || 0, Number(local.visits) || 0)
+    };
   } catch {
-    return store.buildStats(period);
+    return local;
   }
 }
 
 async function userStats(userId, period = 'all') {
   const localUser = store.getUser(userId) || store.touchUser(userId);
   const local = store.userStats(userId, period);
-  if (!useRemote()) return local;
+  const remoteVisits = await fetchRemoteVisitCount(localUser.refCode, period);
+  const visits = Math.max(
+    Number(local.visits) || 0,
+    remoteVisits,
+    Number(localUser.visits) || 0
+  );
+
+  if (!useRemote()) {
+    return { ...local, visits, user: { ...localUser, id: String(userId) } };
+  }
+
   try {
     await syncUser(localUser);
     const remote = await request(
@@ -89,32 +136,50 @@ async function userStats(userId, period = 'all') {
         ...(remote.user || {}),
         ...localUser,
         id: String(userId),
-        refCode: localUser.refCode
+        refCode: localUser.refCode,
+        visits: Math.max(Number(remote.user?.visits) || 0, visits)
       },
-      visits: Math.max(Number(remote.visits) || 0, Number(local.visits) || 0, Number(localUser.visits) || 0),
+      visits: Math.max(Number(remote.visits) || 0, visits),
       commissionEvery:
         remote.commissionEvery != null ? remote.commissionEvery : local.commissionEvery
     };
   } catch {
-    return local;
+    return {
+      ...local,
+      visits,
+      user: { ...localUser, id: String(userId), visits }
+    };
   }
 }
 
 async function listUsers() {
   const local = store.listUsers();
-  if (!useRemote()) return local;
+  const enriched = [];
+  for (const u of local) {
+    const visits = Math.max(
+      Number(u.visits) || 0,
+      await fetchRemoteVisitCount(u.refCode, 'all')
+    );
+    enriched.push({ ...u, visits });
+  }
+  if (!useRemote()) return enriched;
   try {
     const remote = await request('GET', '/api/internal/users');
-    const map = new Map(local.map((u) => [u.id, u]));
+    const map = new Map(enriched.map((u) => [u.id, u]));
     for (const u of remote.users || []) {
       const prev = map.get(String(u.id)) || {};
-      map.set(String(u.id), { ...prev, ...u, id: String(u.id) });
+      const visits = Math.max(
+        Number(prev.visits) || 0,
+        Number(u.visits) || 0,
+        await fetchRemoteVisitCount(prev.refCode || u.refCode, 'all')
+      );
+      map.set(String(u.id), { ...prev, ...u, id: String(u.id), visits });
     }
     return [...map.values()].sort(
       (a, b) => (b.logCount || 0) - (a.logCount || 0) || (b.lastSeenAt || 0) - (a.lastSeenAt || 0)
     );
   } catch {
-    return local;
+    return enriched;
   }
 }
 
@@ -195,6 +260,8 @@ async function removeAdmin(userId) {
 module.exports = {
   useRemote,
   syncUser,
+  syncAllUsers,
+  fetchRemoteVisitCount,
   getSettings,
   setCommissionEvery,
   buildStats,

@@ -670,6 +670,9 @@ async function bootstrap() {
   console.log(
     `@${config.botUsername}: owner=${config.ownerId}, envAdmins=${config.admins.size}, subscription=${SUBSCRIPTION_ENABLED ? 'on' : 'off'}, adminOnly=${ADMIN_ONLY ? 'on' : 'off'}, remoteApi=${apiClient.useRemote() ? 'yes' : 'no'}`
   );
+  apiClient.syncAllUsers().catch((error) => {
+    console.warn('syncAllUsers:', error.message || error);
+  });
   await poll();
 }
 

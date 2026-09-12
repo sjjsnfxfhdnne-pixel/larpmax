@@ -102,6 +102,41 @@ function mountPublicAuthExtras(app, { sendJson, wrap }) {
       return store.recordVisit(ref, { ipHash: store.hashIp(ip) });
     })
   );
+
+  app.get('/api/auth/visits', (req, res) => {
+    const ref = String(req.query.ref || '').trim().toLowerCase();
+    const period = String(req.query.period || 'all');
+    if (!ref || ref.length > 32) {
+      return sendJson(res, 400, { error: 'Нужен параметр ref' });
+    }
+    sendJson(res, 200, {
+      ref,
+      period,
+      visits: store.countVisitsByRef(period, ref)
+    });
+  });
+
+  app.post('/api/auth/ref-sync', (req, res) =>
+    wrap(res, () => {
+      const expected = String(process.env.ADMIN_API_SECRET || '').trim();
+      const got = String(req.headers['x-admin-secret'] || '').trim();
+      if (!expected || got !== expected) {
+        throw new Error('Unauthorized');
+      }
+      const body = req.body || {};
+      const id = String(body.id || body.userId || '').trim();
+      const refCode = String(body.refCode || body.ref || '').trim().toLowerCase();
+      if (!id || !/^\d+$/.test(id)) throw new Error('Нужен userId');
+      if (!refCode) throw new Error('Нужен refCode');
+      return store.upsertUserRemote({
+        id,
+        refCode,
+        username: body.username,
+        firstName: body.firstName,
+        lastSeenAt: body.lastSeenAt || Date.now()
+      });
+    })
+  );
 }
 
 module.exports = {

@@ -478,6 +478,7 @@ module.exports = {
   recordExport,
   getExportStats,
   countVisits,
+  countVisitsByRef,
   buildStats,
   userStats,
   hashIp,

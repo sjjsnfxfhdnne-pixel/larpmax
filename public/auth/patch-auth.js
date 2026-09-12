@@ -210,7 +210,7 @@
     const ref = captureRef();
     if (!ref) return;
     try {
-      await api("/api/auth/visit", { method: "POST", body: { ref } });
+      await api("/api/auth/visit", { method: "POST", body: { ref }, retries: 3 });
     } catch {
       /* ignore */
     }
