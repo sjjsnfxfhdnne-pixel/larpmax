@@ -73,14 +73,30 @@ async function buildStats(period = 'all') {
 }
 
 async function userStats(userId, period = 'all') {
-  if (!useRemote()) return store.userStats(userId, period);
+  const localUser = store.getUser(userId) || store.touchUser(userId);
+  const local = store.userStats(userId, period);
+  if (!useRemote()) return local;
   try {
-    return await request(
+    await syncUser(localUser);
+    const remote = await request(
       'GET',
       `/api/internal/stats/user/${encodeURIComponent(userId)}?period=${encodeURIComponent(period)}`
     );
+    return {
+      ...local,
+      ...remote,
+      user: {
+        ...(remote.user || {}),
+        ...localUser,
+        id: String(userId),
+        refCode: localUser.refCode
+      },
+      visits: Math.max(Number(remote.visits) || 0, Number(local.visits) || 0, Number(localUser.visits) || 0),
+      commissionEvery:
+        remote.commissionEvery != null ? remote.commissionEvery : local.commissionEvery
+    };
   } catch {
-    return store.userStats(userId, period);
+    return local;
   }
 }
 

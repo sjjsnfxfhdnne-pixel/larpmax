@@ -730,7 +730,14 @@
     try {
       const cfg = await api("/api/auth/config");
       if (cfg.botUsername) state.botUsername = cfg.botUsername.replace(/^@/, "");
-      if (cfg.apiBase) state.apiBase = String(cfg.apiBase).replace(/\/$/, "");
+      const fromCfg = String(cfg.apiBase || "").replace(/\/$/, "");
+      // Never trust loopback apiBase from remote hosts — causes "Load failed".
+      if (
+        fromCfg &&
+        !/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(fromCfg)
+      ) {
+        state.apiBase = fromCfg;
+      }
     } catch {
       /* keep default apiBase */
     }

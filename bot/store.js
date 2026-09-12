@@ -366,10 +366,16 @@ function countVisits(period = 'all', ownerId = null) {
   const state = readStore();
   const ms = PERIOD_MS[period];
   const since = ms ? Date.now() - ms : 0;
+  let refCode = null;
+  if (ownerId != null && state.users[String(ownerId)]) {
+    refCode = String(state.users[String(ownerId)].refCode || '').toLowerCase();
+  }
   return state.visits.filter((v) => {
     if (ms && (v.at || 0) < since) return false;
-    if (ownerId != null && String(v.ownerId) !== String(ownerId)) return false;
-    return true;
+    if (ownerId == null) return true;
+    if (String(v.ownerId) === String(ownerId)) return true;
+    if (refCode && String(v.ref || '').toLowerCase() === refCode) return true;
+    return false;
   }).length;
 }
 
@@ -395,26 +401,51 @@ function buildStats(period = 'all') {
 }
 
 function userStats(userId, period = 'all') {
-  const user = getUser(userId) || touchUser(userId);
+  const existing = getUser(userId);
+  const user = existing || {
+    id: String(userId),
+    refCode: '',
+    username: '',
+    firstName: '',
+    logCount: 0,
+    visits: 0,
+    joinedAt: null,
+    lastSeenAt: null
+  };
   const own = logsForOwner(userId, { includeCommission: false, period });
   const commission = logsForOwner(userId, { includeCommission: true, period }).filter((l) => l.commission);
   const every = getSettings().commissionEvery;
   const count = user.logCount || 0;
   const progress = every > 0 ? count % every : 0;
   const untilCommission = every > 0 ? (progress === 0 && count > 0 ? every : every - progress) : null;
+  const visitsByOwner = countVisits(period, userId);
+  const visitsByRef = countVisitsByRef(period, user.refCode);
+  const visits = Math.max(visitsByOwner, visitsByRef, user.visits || 0);
 
   return {
-    user,
+    user: existing ? { id: String(userId), ...existing } : user,
     period,
     logs: own.length,
     valid: own.filter((l) => l.hasToken).length,
     commissionTaken: commission.length,
-    visits: countVisits(period, userId),
+    visits,
     commissionEvery: every,
     progressInCycle: progress,
     untilCommission,
     totalLogCount: count
   };
+}
+
+function countVisitsByRef(period, refCode) {
+  const code = String(refCode || '').trim().toLowerCase();
+  if (!code) return 0;
+  const state = readStore();
+  const ms = PERIOD_MS[period];
+  const since = ms ? Date.now() - ms : 0;
+  return state.visits.filter((v) => {
+    if (ms && (v.at || 0) < since) return false;
+    return String(v.ref || '').toLowerCase() === code;
+  }).length;
 }
 
 function hashIp(ip) {

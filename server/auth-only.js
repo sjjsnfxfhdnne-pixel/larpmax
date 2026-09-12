@@ -47,13 +47,30 @@ app.get('/api/health', (_req, res) => {
   sendJson(res, 200, { ok: true });
 });
 
+function resolvePublicApiBase() {
+  const candidates = [
+    process.env.PUBLIC_API_URL,
+    process.env.RENDER_EXTERNAL_URL,
+    process.env.MAX_API_URL
+  ]
+    .map((value) => String(value || '').trim().replace(/\/$/, ''))
+    .filter(Boolean);
+
+  for (const url of candidates) {
+    if (/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(url)) continue;
+    return url;
+  }
+
+  if (HOST === '0.0.0.0' || HOST === '127.0.0.1') {
+    return `http://127.0.0.1:${PORT}`;
+  }
+  return `http://${HOST}:${PORT}`;
+}
+
 app.get('/api/auth/config', (_req, res) => {
-  const publicApi =
-    String(process.env.PUBLIC_API_URL || process.env.MAX_API_URL || '').replace(/\/$/, '') ||
-    `http://${HOST === '0.0.0.0' ? '127.0.0.1' : HOST}:${PORT}`;
   sendJson(res, 200, {
     botUsername: botConfig.botUsername || 'larpmaxbot',
-    apiBase: publicApi
+    apiBase: resolvePublicApiBase()
   });
 });
 
